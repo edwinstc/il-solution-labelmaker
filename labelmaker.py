@@ -1,48 +1,46 @@
-import streamlit as st
-from fpdf import FPDF
-import pandas as pd
-import base64
+#LCST Plotter
+#Author: ESTC
 
-st.title('Sample Label Maker')
-Solute = st.text_input('Enter the solute of the mixture')
-Solvent = st.text_input('Enter the solvent used')
-Conc_units = st.text_input('Enter concentration units, e.g. mol/kg, ppm, etc.')
-Date = st.text_input('Enter date of sample prep in format yyyymmdd')
-Owner = st.text_input('Enter the name of the sample owner')
-Comments = st.text_input('Enter any additional comments. Limit of 15 characters')
-CS_composition = st.file_uploader('File uploader',type='csv')
-show_file = st.empty()
+import numpy
+import streamlit
+import matplotlib.pyplot as plt
+import pandas
 
-def Make_pdf():
-    pdf = FPDF('L','in',(0.7,1.4))
-    pdf.set_auto_page_break(0)
-    pdf.set_margins(0.1,0.1,0.3)
-    pdf.set_font('Helvetica','',6.5)
-    return pdf
+def launch_app():
+    streamlit.title("Phase Diagram Plotter")
+    global cation, anion, mw_cat, mw_an, datafile 
+    cation = streamlit.text_input("Enter the abbreviation of the cation:")
+    # mw_cat = streamlit.text_input("Enter the molecular weight of the cation:")
+    anion = streamlit.text_input("Enter the abbreviationo of the anion:")
+    # mw_an = streamlit.text_input("Enter the molecular weight of the anion:")
+    T_start = streamlit.text_input("Enter start temperature in °C")
+    streamlit.text_input("Enter your initials:")
+    datafile = streamlit.file_uploader("Upload the LCST file:",type="xlsx")
 
-def Print_labels(data,pdf):
-    for i in range(0,len(data)):
-        pdf.add_page()
-        text = (f'Name: {Solute}/{Solvent}\nConc: {str(concentrations[i])} {Conc_units}\nDate: {Date}\nOwner: {Owner}\nCom:{Comments}')
-        pdf.multi_cell(1.25,0.1,txt=text)
-    pdfname = str(f'Labels_{Solute}_{Date}.pdf')
-    pdf.output(pdfname)
-    return pdfname
 
-def st_display_pdf(pdf_file):  
-    with open(pdf_file,"rb") as f:
-        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-    pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf">'
-    st.markdown(pdf_display, unsafe_allow_html=True)
+def load_data(datafile):
+    global T,x1a,x1b,x1
+    data = pandas.read_excel(datafile)
+    T = data['T']-273.15
+    x1a = data["x'1"]
+    x1b = data['x"1']
+    # x1 = 
+    streamlit.dataframe(data)
 
-if not CS_composition:
-    ''
-else:
-    data = pd.read_csv(CS_composition)
-    concentrations = data["Actual"]
-    doc = Make_pdf()
-    pdfname = Print_labels(data,doc)
+def make_plot(x1a,x1b,T,cation,anion):
+    fig,ax = plt.subplots()
+    ax.set_title("Predicted Phase Diagram of Aqueous ["+cation+"]["+anion+"]")
+    ax.scatter(x1a,T,marker=".",c="blue")
+    ax.scatter(x1b,T,marker=".",c="blue")
+    ax.set_xlabel("Water Mole Fraction")
+    ax.set_xlim([0,1.05])
+    ax.set_ylabel("Temperature (°C)")
+    ax.set_ylim([50,250])
+    plt.savefig(cation+"_"+anion+".png")
+    streamlit.pyplot(fig)
 
-if st.button('Make labels'):
-    st.text(Solute)
-    st_display_pdf(pdfname)
+launch_app()
+if datafile is not None:
+    load_data(datafile)
+    make_plot(x1a,x1b,T,cation,anion)
+    
