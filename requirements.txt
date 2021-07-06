@@ -1,4 +1,4 @@
 streamlit
 pandas
+FPDF
 base64
-fpdf
